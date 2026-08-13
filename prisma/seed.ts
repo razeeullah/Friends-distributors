@@ -636,7 +636,7 @@ async function main(): Promise<void> {
           },
         });
       }
-    });
+    }, { maxWait: 100000, timeout: 120000 });
   } finally {
     await prisma.$disconnect();
   }
