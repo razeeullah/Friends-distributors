@@ -3,6 +3,7 @@ import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { createPaginationMeta, parsePagination } from "@/lib/pagination";
+import { withCache, CacheTags } from "@/lib/cache";
 
 export const productListQuerySchema = z.object({
   search: z.string().trim().max(180).optional().default(""),
@@ -171,24 +172,37 @@ export async function listProducts(
 }
 
 export async function getCatalogOptions(businessId: string) {
-  const [categories, brands, units] = await Promise.all([
-    db.category.findMany({
-      where: { businessId, archivedAt: null, isActive: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
-    }),
-    db.brand.findMany({
-      where: { businessId, archivedAt: null, isActive: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
-    }),
-    db.unit.findMany({
-      where: { businessId, archivedAt: null, isActive: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, abbreviation: true, precision: true },
-    }),
-  ]);
-  return { categories, brands, units };
+  return withCache(
+    async () => {
+      const [categories, brands, units] = await Promise.all([
+        db.category.findMany({
+          where: { businessId, archivedAt: null, isActive: true },
+          orderBy: { name: "asc" },
+          select: { id: true, name: true },
+        }),
+        db.brand.findMany({
+          where: { businessId, archivedAt: null, isActive: true },
+          orderBy: { name: "asc" },
+          select: { id: true, name: true },
+        }),
+        db.unit.findMany({
+          where: { businessId, archivedAt: null, isActive: true },
+          orderBy: { name: "asc" },
+          select: { id: true, name: true, abbreviation: true, precision: true },
+        }),
+      ]);
+      return { categories, brands, units };
+    },
+    [`catalog-options-${businessId}`],
+    {
+      tags: [
+        CacheTags.categories(businessId),
+        CacheTags.brands(businessId),
+        CacheTags.units(businessId),
+      ],
+      revalidate: 3600, // 1 hour
+    }
+  )();
 }
 
 export async function getProductDetails(
@@ -280,44 +294,62 @@ export async function getProductActivity(
 }
 
 export async function listCategories(businessId: string) {
-  return db.category.findMany({
-    where: { businessId, archivedAt: null },
-    orderBy: [{ isActive: "desc" }, { name: "asc" }],
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      isActive: true,
-      _count: { select: { products: true } },
+  return withCache(
+    async () => {
+      return db.category.findMany({
+        where: { businessId, archivedAt: null },
+        orderBy: [{ isActive: "desc" }, { name: "asc" }],
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          isActive: true,
+          _count: { select: { products: true } },
+        },
+      });
     },
-  });
+    [`list-categories-${businessId}`],
+    { tags: [CacheTags.categories(businessId)], revalidate: 3600 }
+  )();
 }
 
 export async function listBrands(businessId: string) {
-  return db.brand.findMany({
-    where: { businessId, archivedAt: null },
-    orderBy: [{ isActive: "desc" }, { name: "asc" }],
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      isActive: true,
-      _count: { select: { products: true } },
+  return withCache(
+    async () => {
+      return db.brand.findMany({
+        where: { businessId, archivedAt: null },
+        orderBy: [{ isActive: "desc" }, { name: "asc" }],
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          isActive: true,
+          _count: { select: { products: true } },
+        },
+      });
     },
-  });
+    [`list-brands-${businessId}`],
+    { tags: [CacheTags.brands(businessId)], revalidate: 3600 }
+  )();
 }
 
 export async function listUnits(businessId: string) {
-  return db.unit.findMany({
-    where: { businessId, archivedAt: null },
-    orderBy: [{ isActive: "desc" }, { name: "asc" }],
-    select: {
-      id: true,
-      name: true,
-      abbreviation: true,
-      precision: true,
-      isActive: true,
-      _count: { select: { products: true } },
+  return withCache(
+    async () => {
+      return db.unit.findMany({
+        where: { businessId, archivedAt: null },
+        orderBy: [{ isActive: "desc" }, { name: "asc" }],
+        select: {
+          id: true,
+          name: true,
+          abbreviation: true,
+          precision: true,
+          isActive: true,
+          _count: { select: { products: true } },
+        },
+      });
     },
-  });
+    [`list-units-${businessId}`],
+    { tags: [CacheTags.units(businessId)], revalidate: 3600 }
+  )();
 }

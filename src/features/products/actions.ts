@@ -1,6 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
+import { CacheTags } from "@/lib/cache";
 
 import { getRequestMetadata } from "@/features/auth/request-metadata";
 import { requirePermission } from "@/features/auth/session";
@@ -140,6 +141,7 @@ export async function saveCategoryAction(
     await saveCategory(context, parsed.data, await getRequestMetadata());
     revalidatePath("/products/categories");
     revalidatePath("/products/new");
+    updateTag(CacheTags.categories(context.business.id));
     return {
       success: true,
       message: parsed.data.id ? "Category updated." : "Category created.",
@@ -159,6 +161,7 @@ export async function saveBrandAction(
     await saveBrand(context, parsed.data, await getRequestMetadata());
     revalidatePath("/products/brands");
     revalidatePath("/products/new");
+    updateTag(CacheTags.brands(context.business.id));
     return {
       success: true,
       message: parsed.data.id ? "Brand updated." : "Brand created.",
@@ -178,6 +181,7 @@ export async function saveUnitAction(
     await saveUnit(context, parsed.data, await getRequestMetadata());
     revalidatePath("/products/units");
     revalidatePath("/products/new");
+    updateTag(CacheTags.units(context.business.id));
     return {
       success: true,
       message: parsed.data.id ? "Unit updated." : "Unit created.",

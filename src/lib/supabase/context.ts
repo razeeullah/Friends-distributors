@@ -16,11 +16,12 @@ function resolveNextEnv(): Partial<SupabaseEnv> {
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY
   const secretKey = process.env.SUPABASE_SECRET_KEY
 
-  return {
-    url: url ?? undefined,
-    publishableKeys: publishableKey ? { default: publishableKey } : {},
-    secretKeys: secretKey ? { default: secretKey } : {},
-  }
+  const env: Partial<SupabaseEnv> = {}
+  if (url) env.url = url
+  if (publishableKey) env.publishableKeys = { default: publishableKey }
+  if (secretKey) env.secretKeys = { default: secretKey }
+
+  return env
 }
 
 let cachedJwks: SupabaseEnv['jwks'] = null
